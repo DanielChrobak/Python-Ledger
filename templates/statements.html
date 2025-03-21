@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+async function downloadWithVerification(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Download failed');
+        
+        const expectedHash = response.headers.get('X-File-Hash');
+        const blob = await response.blob();
+        
+        const arrayBuffer = await blob.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const actualHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        if (expectedHash !== actualHash) {
+            alert('File integrity check failed! The downloaded file may be corrupted.');
+            return;
+        }
+        
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = response.headers.get('content-disposition').split('filename=')[1];
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+        console.error('Download failed:', error);
+        alert('Download failed. Please try again.');
+    }
+}
+</script>
+
+<div class="container">
+    <h2>Account Statements</h2>
+    
+    {% for year, months in transactions_by_year|dictsort(reverse=True) %}
+    <div class="card mb-3">
+        <div class="card-header" id="heading{{ year }}">
+            <div class="d-flex align-items-center justify-content-between">
+                <button class="btn btn-link collapsed" type="button" data-bs-toggle="collapse" 
+                    data-bs-target="#year{{ year }}" aria-expanded="false" aria-controls="year{{ year }}">
+                    {{ year }} Statements
+                </button>
+                <div>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" 
+                        data-bs-target="#yearFormatModal{{ year }}">
+                        Download Year
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Year Format Selection Modal -->
+        <div class="modal fade" id="yearFormatModal{{ year }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Select Format for {{ year }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" 
+                                onclick="downloadWithVerification('{{ url_for('statements.download_statement', year=year, month=0, format='pdf') }}')"
+                                data-bs-dismiss="modal">
+                                PDF Format
+                            </button>
+                            <button class="btn btn-secondary"
+                                onclick="downloadWithVerification('{{ url_for('statements.download_statement', year=year, month=0, format='csv') }}')"
+                                data-bs-dismiss="modal">
+                                CSV Format
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="year{{ year }}" class="collapse" aria-labelledby="heading{{ year }}">
+            <div class="card-body">
+                {% for month in months|sort(reverse=True) %}
+                <div class="card-header">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span>{{ month|month_name }} {{ year }}</span>
+                        <div>
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" 
+                                data-bs-target="#monthFormatModal{{ year }}-{{ month }}">
+                                Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Month Format Selection Modal -->
+                <div class="modal fade" id="monthFormatModal{{ year }}-{{ month }}" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Select Format for {{ month|month_name }} {{ year }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-primary" 
+                                        onclick="downloadWithVerification('{{ url_for('statements.download_statement', year=year, month=month, format='pdf') }}')"
+                                        data-bs-dismiss="modal">
+                                        PDF Format
+                                    </button>
+                                    <button class="btn btn-secondary"
+                                        onclick="downloadWithVerification('{{ url_for('statements.download_statement', year=year, month=month, format='csv') }}')"
+                                        data-bs-dismiss="modal">
+                                        CSV Format
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

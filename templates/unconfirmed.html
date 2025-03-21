@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Account Not Confirmed</h2>
+<p>Please check your email for the confirmation link.</p>
+<p>Need another confirmation email? <a href="{{ url_for('auth.resend_confirmation') }}">Resend</a></p>
+{% endblock %}

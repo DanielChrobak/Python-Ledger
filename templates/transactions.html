@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .modal-body { padding: 20px; }
+    .form-group { margin-bottom: 15px; }
+    .form-control { border-radius: 4px; border: 1px solid #ced4da; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+    .form-control:focus { border-color: #80bdff; box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); }
+    .modal-footer { border-top: 1px solid #e9ecef; padding: 15px; }
+    .filter-active { color: #0d6efd; position: relative; }
+    .filter-active::after { content: "●"; margin-left: 8px; font-size: 0.8em; vertical-align: middle; }
+    .transaction-container { max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.25rem; }
+    .transaction-table { margin-bottom: 0; }
+    .transaction-table thead th { position: sticky; top: 0; background-color: #f8f9fa; z-index: 1; }
+    .uuid-cell { white-space: nowrap; overflow: visible; text-overflow: unset; }
+</style>
+
+<h2>Transaction History</h2>
+<div class="transaction-container">
+    <table class="table table-striped transaction-table">
+        <thead>
+            <tr>
+                <th><a href="#" id="filter-uuid">UUID</a></th>
+                <th><a href="#" id="sort-date">Date</a></th>
+                <th><a href="#" id="sort-type">Type</a></th>
+                <th><a href="#" id="filter-amount">Amount</a></th>
+                <th><a href="#" id="filter-note">Note</a></th>
+                <th><a href="#" id="filter-party">Recipient</a></th>
+            </tr>
+        </thead>
+        <tbody id="transaction-body">
+            {% for transaction in transactions %}
+            <tr>
+                <td class="uuid-cell" title="{{ transaction.id }}">{{ transaction.id }}</td>
+                <td>{{ transaction.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ 'Sent' if transaction.sender_id == user.id else 'Received' }}</td>
+                <td>${{ "%.2f"|format(transaction.amount) }}</td>
+                <td>{{ transaction.note or '-' }}</td>
+                <td>{{ transaction.recipient_id if transaction.sender_id == user.id else transaction.sender_id }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% for modalId, title, fields in [('uuid', 'Filter by UUID', ['uuid-input']), 
+                                  ('amount', 'Filter by Amount', ['min-amount', 'max-amount']), 
+                                  ('note', 'Filter by Note', ['note-keyword']), 
+                                  ('party', 'Filter by Recipient', ['party-uuid'])] %}
+<div class="modal fade" id="{{ modalId }}Modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ title }}</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <form>
+                <div class="modal-body">
+                    {% for field in fields %}
+                    <div class="form-group">
+                        <label for="{{ field }}">{{ field.replace('-', ' ').capitalize() }}</label>
+                        <input type="text" class="form-control" id="{{ field }}" placeholder="Enter {{ field.replace('-', ' ') }}">
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="clear-{{ modalId }}-filter">Clear</button>
+                    <button type="button" class="btn btn-primary" id="apply-{{ modalId }}-filter">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+    let originalTransactions = [{% for transaction in transactions %} {
+        id: "{{ transaction.id }}", date: "{{ transaction.timestamp.strftime('%Y-%m-%d %H:%M') }}",
+        type: "{% if transaction.sender_id == user.id %}Sent{% else %}Received{% endif %}",
+        amount: {{ transaction.amount }}, note: "{{ transaction.note or '-' }}", 
+        recipient: "{% if transaction.sender_id == user.id %}{{ transaction.recipient_id }}{% else %}{{ transaction.sender_id }}{% endif %}",
+        timestamp: "{{ transaction.timestamp }}"  // Store raw timestamp for sorting
+    }, {% endfor %}];
+    
+    let transactions = [...originalTransactions];
+    let sortFlags = { uuid: false, date: false, type: false };
+    let activeFilters = { uuid: '', amount: { min: null, max: null }, note: '', party: '' };
+    let dateSortAscending = true;  // Track the date sort order (true for ascending, false for descending)
+
+    const toggleModal = (id) => $(`#${id}Modal`).modal('show');
+    const updateFilterIndicator = (modalId, isActive) => document.getElementById(`filter-${modalId}`).classList.toggle('filter-active', isActive);
+
+    const clearFilter = (field, modalId) => {
+        const fields = field.split(',');
+        fields.forEach(f => {
+            const element = document.getElementById(f.trim());
+            if (element) {
+                element.value = '';  // Clear the value if the element is found
+            }
+        });
+
+        if (modalId === 'amount') {
+            activeFilters.amount = { min: null, max: null };
+        } else {
+            activeFilters[modalId] = '';
+        }
+
+        filterTransactions(modalId, activeFilters[modalId]);
+        $(`#${modalId}Modal`).modal('hide');
+        updateFilterIndicator(modalId, false);
+    };
+
+    const applyFilter = (field, value, modalId) => {
+        filterTransactions(field, value);
+        $(`#${modalId}Modal`).modal('hide');
+        const isActive = Object.values(value).some(v => v !== '') || (field === 'amount' && (value.min || value.max));
+        updateFilterIndicator(modalId, isActive);
+    };
+
+    const sortTransactions = (field) => {
+        sortFlags[field] = !sortFlags[field];
+        if (field === 'date') {
+            // Toggle between newest to oldest (false) and oldest to newest (true)
+            transactions.sort((a, b) => {
+                return dateSortAscending
+                    ? new Date(a.timestamp) - new Date(b.timestamp)  // oldest to newest
+                    : new Date(b.timestamp) - new Date(a.timestamp); // newest to oldest
+            });
+            dateSortAscending = !dateSortAscending;  // Toggle the sort direction
+        } else if (field === 'type') {
+            transactions.sort((a, b) => (a.type < b.type ? -1 : 1) * (sortFlags[field] ? 1 : -1));
+        } else {
+            transactions.sort((a, b) => (a[field] < b[field] ? -1 : a[field] > b[field] ? 1 : 0) * (sortFlags[field] ? 1 : -1));
+        }
+        updateTransactionTable();
+    };
+
+    const filterTransactions = (field, value) => {
+        if (field === 'uuid') activeFilters.uuid = value;
+        else activeFilters[field] = value;
+        transactions = originalTransactions.filter(t => {
+            const uuidFilter = !activeFilters.uuid || t.id.toLowerCase().includes(activeFilters.uuid.toLowerCase());
+            const amountFilter = (!activeFilters.amount.min || t.amount >= parseFloat(activeFilters.amount.min)) &&
+                                 (!activeFilters.amount.max || t.amount <= parseFloat(activeFilters.amount.max));
+            const noteFilter = !activeFilters.note || t.note.toLowerCase().includes(activeFilters.note.toLowerCase());
+            const partyFilter = !activeFilters.party || t.recipient.includes(activeFilters.party);
+            return uuidFilter && amountFilter && noteFilter && partyFilter;
+        });
+        updateTransactionTable();
+    };
+
+    const updateTransactionTable = () => {
+        document.getElementById('transaction-body').innerHTML = transactions.map(t => `
+            <tr>
+                <td class="uuid-cell" title="${t.id}">${t.id}</td>
+                <td>${t.date}</td>
+                <td>${t.type}</td>
+                <td>$${t.amount.toFixed(2)}</td>
+                <td>${t.note}</td>
+                <td>${t.recipient}</td>
+            </tr>
+        `).join('');
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('sort-date').addEventListener('click', (e) => {
+            e.preventDefault();
+            sortTransactions('date');
+        });
+
+        document.getElementById('sort-type').addEventListener('click', (e) => {
+            e.preventDefault();
+            sortTransactions('type');
+        });
+
+        ['uuid', 'amount', 'note', 'party'].forEach(modalId => {
+            document.getElementById(`filter-${modalId}`).addEventListener('click', e => { e.preventDefault(); toggleModal(modalId); });
+        });
+
+        ['uuid', 'amount', 'note', 'party'].forEach(modalId => {
+            document.getElementById(`apply-${modalId}-filter`).addEventListener('click', () => {
+                const value = modalId === 'amount' ? {
+                    min: document.getElementById('min-amount').value,
+                    max: document.getElementById('max-amount').value
+                } : (modalId === 'uuid' ? document.getElementById('uuid-input').value : document.getElementById(`${modalId}-keyword`).value);
+                applyFilter(modalId, value, modalId);
+            });
+
+            document.getElementById(`clear-${modalId}-filter`).addEventListener('click', () => clearFilter(modalId, modalId));
+        });
+    });
+</script>
+{% endblock %}

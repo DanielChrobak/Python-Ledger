@@ -1,0 +1,10 @@
+{% extends "email_template.html" %}
+{% block content %}
+    <h2>Welcome to Ledger App!</h2>
+    <p>Please confirm your email address to activate your account:</p>
+    <a href="{{ confirm_url }}" class="button">Confirm Email Address</a>
+    <p>Or copy this link into your browser:</p>
+    <p style="word-break: break-all; color: #4a90e2;">
+        {{ confirm_url }}
+    </p>
+{% endblock %}

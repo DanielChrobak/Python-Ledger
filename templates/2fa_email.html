@@ -1,0 +1,24 @@
+{% extends "email_template.html" %}
+
+{% block content %}
+    <h2>Two-Factor Authentication Enabled</h2>
+    <p>You have successfully enabled Two-Factor Authentication (2FA) on your Ledger App account.</p>
+    
+    <h3>Setup Instructions:</h3>
+    <p>Scan the QR code below using your authenticator app (Google Authenticator, Authy, etc.).</p>
+    <img src="cid:qr_code" alt="2FA QR Code" style="max-width: 100%; height: auto;"/>
+
+    <h3>Manual Setup Key:</h3>
+    <p>If you cannot scan the QR code, manually enter the following key into your authenticator app:</p>
+    <pre style="font-size: 18px; font-weight: bold; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">{{ secret }}</pre>
+
+    <h3>Account Setup Information:</h3>
+    <p>To manually configure your authenticator app, use the following OTP URI:</p>
+    <pre style="background-color: #f9f9f9; padding: 10px; border-radius: 5px;">{{ otp_uri }}</pre>
+
+    <p>Issuer: Ledger App</p>
+
+    <p><strong>Important:</strong> Keep this key secure. If you lose access, you will need to disable 2FA or contact support.</p>
+
+    <p>Thank you,<br>Ledger App Team</p>
+{% endblock %}

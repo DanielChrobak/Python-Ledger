@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Welcome, {{ user.username }}!</h2>
+<p>Your current balance: $<span id="current-balance" data-balance="{{ user.balance }}"></span></p>
+<p>Your UUID: {{ user.id }}</p>
+<a href="{{ url_for('transactions.transfer') }}" class="btn btn-primary">Make a Transfer</a>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>    
+    // Format the initial balance
+    const balanceElement = document.getElementById('current-balance');
+    const initialBalance = parseFloat(balanceElement.dataset.balance);
+    balanceElement.textContent = initialBalance.toFixed(2);
+    
+    const socket = io({
+        transports: ['websocket'],
+        upgrade: false
+    });
+
+    socket.on('connect', () => {
+        console.log('Socket.IO connected');
+        fetch('/socket-auth')
+            .then(response => response.json())
+            .then(data => {
+                socket.emit('authenticate', { token: data.token });
+            });
+    });
+
+    socket.on('auth_success', (data) => {
+        console.log('Socket.IO authenticated:', data);
+    });
+
+    socket.on('balance_update', function(data) {
+        console.log('Balance update received:', data);
+        document.getElementById('current-balance').textContent = data.balance.toFixed(2);
+    });
+</script>
+{% endblock %}

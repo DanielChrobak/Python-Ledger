@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Account Settings</h2>
+
+    <!-- Account Information -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Account Information</h5>
+            <p><strong>Username:</strong> {{ user.username }}</p>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>UUID:</strong> {{ user.id }}</p>
+        </div>
+    </div>
+
+    <!-- 2FA Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Two-Factor Authentication (2FA)</h5>
+            <label class="switch">
+                <input type="checkbox" id="toggle-2fa" {% if user.two_factor_enabled %}checked{% endif %}>
+                <span class="slider round"></span>
+            </label>
+            <p id="2fa-status">
+                {% if user.two_factor_enabled %}
+                    2FA is <strong>Enabled</strong>
+                {% else %}
+                    2FA is <strong>Disabled</strong>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Other Modals for updating username, email, and password -->
+    <button class="btn btn-primary" data-toggle="modal" data-target="#usernameModal">Change Username</button>
+    <button class="btn btn-primary" data-toggle="modal" data-target="#emailModal">Change Email</button>
+    <button class="btn btn-primary" data-toggle="modal" data-target="#passwordModal">Change Password</button>
+</div>
+
+<!-- Modal for 2FA Password Confirmation -->
+<div class="modal" id="twoFAPasswordModal" tabindex="-1" role="dialog" aria-labelledby="twoFAPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="twoFAPasswordModalLabel">Confirm Password</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Please enter your current password to confirm this action.</p>
+          <input type="password" class="form-control" id="twofa-password-input" placeholder="Current Password">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirm-2fa-action">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- Modal for Username Update -->
+<div class="modal" id="usernameModal" tabindex="-1" role="dialog" aria-labelledby="usernameModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="usernameModalLabel">Update Username</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="new_username">New Username</label>
+                        <input type="text" class="form-control" id="new_username" name="new_username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="current_password">Current Password</label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Update Username</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Email Update -->
+<div class="modal" id="emailModal" tabindex="-1" role="dialog" aria-labelledby="emailModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailModalLabel">Update Email</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="new_email">New Email</label>
+                        <input type="email" class="form-control" id="new_email" name="new_email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="current_password">Current Password</label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Update Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Password Update -->
+<div class="modal" id="passwordModal" tabindex="-1" role="dialog" aria-labelledby="passwordModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="passwordModalLabel">Update Password</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="new_password">New Password</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="current_password">Current Password</label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Toggle switch styling */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #28a745;
+}
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+</style><style>
+/* Toggle switch styling */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #28a745;
+}
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+</style><style>
+/* Toggle switch styling */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #28a745;
+}
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+</style><style>
+/* Toggle switch styling */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #28a745;
+}
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+</style><style>
+/* Toggle switch styling */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #28a745;
+}
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+</style>
+
+<script>
+    let twofaAction = '';  // 'enable' or 'disable'
+
+    // When the toggle changes, show the password confirmation modal.
+    document.getElementById('toggle-2fa').addEventListener('change', function(e) {
+        // Prevent immediate action.
+        e.preventDefault();
+        twofaAction = this.checked ? 'enable' : 'disable';
+        // Show modal (using jQuery for Bootstrap modals)
+        $('#twoFAPasswordModal').modal('show');
+    });
+
+    // Handle the modal confirmation button click.
+    document.getElementById('confirm-2fa-action').addEventListener('click', function() {
+        let confirmButton = this;
+        confirmButton.disabled = true;  // Disable the button immediately
+        let password = document.getElementById('twofa-password-input').value;
+        let url = twofaAction === 'enable' ? '/enable_2fa' : '/disable_2fa';
+        
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: password })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('2fa-status').innerHTML = `2FA is <strong>${twofaAction === 'enable' ? 'Enabled' : 'Disabled'}</strong>`;
+                flashMessage(data.message, 'success');
+            } else {
+                flashMessage('Error: ' + data.error, 'danger');
+                // Revert toggle state on error.
+                document.getElementById('toggle-2fa').checked = twofaAction !== 'enable';
+            }
+            // Clear the password input.
+            document.getElementById('twofa-password-input').value = '';
+            $('#twoFAPasswordModal').modal('hide');
+            confirmButton.disabled = false;  // Re-enable the button after processing
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            flashMessage('Something went wrong!', 'danger');
+            document.getElementById('toggle-2fa').checked = twofaAction !== 'enable';
+            $('#twoFAPasswordModal').modal('hide');
+            confirmButton.disabled = false;  // Re-enable the button in case of error
+        });
+    });
+    
+    // Utility to flash messages.
+    function flashMessage(message, category) {
+        let flashContainer = document.createElement('div');
+        flashContainer.className = `alert alert-${category}`;
+        flashContainer.innerText = message;
+        document.querySelector('.container').prepend(flashContainer);
+    
+        // Auto-remove the flash message after a few seconds.
+        setTimeout(() => {
+            flashContainer.remove();
+        }, 5000);
+    }
+</script>
+    
+{% endblock %}    
